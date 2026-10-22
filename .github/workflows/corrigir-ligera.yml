@@ -1,0 +1,43 @@
+name: Corrigir avisos internos LIGERA
+on:
+  push:
+    paths:
+      - '.github/workflows/corrigir-ligera.yml'
+permissions:
+  contents: write
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Remover avisos internos sem alterar layout ou imagens
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path("index.html")
+          raw=p.read_bytes()
+          assert hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\0"+raw).hexdigest()=="cfaeabdab428768fec527e460007c1817fb75c06", "O HTML foi alterado; cancelando para preservar o site."
+          s=raw.decode("utf-8")
+          replacements=[
+            ('<div class="price-line"><span class="compare-price">US$ 138,00</span></div>', ''),
+            ('<p class="value-note">US$ 138 es un valor de referencia propuesto, no un precio anterior verificado. Confirma su fundamento antes de publicarlo como descuento.</p>', ''),
+            ('<p class="small">Configura tu enlace de pago antes de publicar la página.</p>', ''),
+            ('<span style="display:block;font-size:.8rem;margin-top:10px">Antes de publicar: configura checkout, contacto, política de privacidad, términos y reembolso.</span>', ''),
+          ]
+          for old,new in replacements:
+            assert s.count(old)==1, "Texto esperado nao encontrado: "+old[:40]
+            s=s.replace(old,new)
+          updated=s.encode("utf-8")
+          assert hashlib.sha1(b"blob "+str(len(updated)).encode()+b"\0"+updated).hexdigest()=="6782a0c09961817f942f7048a6c0f6c8b6d318e5", "O resultado nao corresponde ao HTML corrigido."
+          p.write_bytes(updated)
+          PY
+      - name: Publicar correção
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Remover avisos internos e preço de referência não verificado"
+          git push
