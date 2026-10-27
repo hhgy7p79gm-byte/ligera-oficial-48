@@ -1,0 +1,44 @@
+name: Install Meta Pixel on LIGERA
+on:
+  push:
+    paths:
+      - '.github/workflows/install-meta-pixel.yml'
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add Meta Pixel to LIGERA homepage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          pixel_id = "998787163258239"
+          if "fbq('init', '" + pixel_id + "')" not in s:
+              assert "connect.facebook.net" not in s, "An existing Meta Pixel is already present"
+              assert s.count("</head>") == 1, "Expected one head closing tag"
+              assert 'href="https://pay.kiwify.com/KnAUyRX"' in s, "Checkout URL missing"
+              snippet = """<!-- Meta Pixel Code -->
+          <script>
+          !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+          fbq('init', '998787163258239');
+          fbq('track', 'PageView');
+          </script>
+          <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=998787163258239&amp;ev=PageView&amp;noscript=1" /></noscript>
+          <!-- End Meta Pixel Code -->"""
+              s = s.replace("</head>", snippet + "\n</head>", 1)
+              p.write_text(s, encoding="utf-8")
+          assert "fbq('init', '998787163258239')" in p.read_text(encoding="utf-8")
+          print("Pixel 998787163258239 installed and PageView configured")
+          PY
+          git diff --check
+          if ! git diff --quiet -- index.html; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "Install Meta Pixel 998787163258239 on LIGERA"
+            git push
+          fi
