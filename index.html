@@ -146,8 +146,9 @@ document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListen
    timer.textContent=String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0');
    if(secs===0)clearInterval(tick);
  };
+ let tick=null;
+ tick=setInterval(render,1000);
  render();
- const tick=setInterval(render,1000);
 })();
 </script>
 </body></html>
